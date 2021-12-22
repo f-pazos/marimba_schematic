@@ -27,6 +27,7 @@ shapes = []
 def on_draw(): 
     window.clear()
     batch.draw()
+    pyglet.image.get_buffer_manager().get_color_buffer().save('screenshot.png')
     
 def add_shapes(lst):
     for shape in lst:
