@@ -229,7 +229,7 @@ def create_rightbutt():
         draw_rectangle(l_bound, MARIMBA_WIDTH, curr_bottom, curr_bottom + dy, [random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)], 255)
         curr_bottom += dy
 
-    input(dimensions[1]["right_butt"][0] - dimensions[0]["right_butt"][1])
+    print(dimensions[1]["right_butt"][0] - dimensions[0]["right_butt"][1])
                                                                                 # RIGHT BUTT DIMENSIONS
     # draw_rectangle(l_bound, MARIMBA_WIDTH, d_bound, d_bound + 1.125, white, 255) # Lowest
     # draw_rectangle(l_bound, MARIMBA_WIDTH, d_bound + 1.125 + 1.125, midpoint_1 - 0.5, white, 255) # In between 0 and 1

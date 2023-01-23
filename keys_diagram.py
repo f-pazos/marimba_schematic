@@ -5,26 +5,26 @@
 import csv
 import pyglet
 
-import marimba_keys_helpers
+import key_data
 import pyglet_handler
 
 def main():
-    accs = marimba_keys_helpers.get_accidentals()
-    nats = marimba_keys_helpers.get_naturals()
+    accs = key_data.get_accidentals()
+    nats = key_data.get_naturals()
     
-    marimba_keys_helpers.set_nodes('natural_nodes.csv', nats)
-    marimba_keys_helpers.set_nodes('accidental_nodes.csv', accs)
+    key_data.set_nodes('natural_nodes.csv', nats)
+    key_data.set_nodes('accidental_nodes.csv', accs)
     
     all_keys = accs | nats
     
-    marimba_keys_helpers.set_x_bounds(nats, accs)
-    marimba_keys_helpers.set_y_bounds(nats, accs)
+    key_data.set_x_bounds(nats, accs)
+    key_data.set_y_bounds(nats, accs)
     pyglet_handler.set_keys(nats, accs)
 
     pyglet_handler.create_midpoint()
     pyglet_handler.create_bounds()
     pyglet_handler.create_keys()
-    lines = marimba_keys_helpers.get_best_fit_lines(nats, accs)
+    lines = key_data.get_best_fit_lines(nats, accs)
     pyglet_handler.create_nodelines(lines)
     pyglet_handler.create_leftbutt()
     pyglet_handler.create_rightbutt()
