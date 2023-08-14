@@ -24,7 +24,7 @@ class Beam:
 class Marimba: 
     def __init__(
             self,             
-            total_width,
+            midbeam_width,
             left_butt_height, 
             left_butt_width, 
             left_butt_offset, 
@@ -32,6 +32,6 @@ class Marimba:
             right_butt_width,            
             right_butt_offset, 
     ):
-            self.total_width = total_width,
-            self.left_butt = Butt(left_butt_width, left_butt_height)
-            self.right_butt = Butt(right_butt_width, right_butt_height)
+            self.midbeam_width = midbeam_width
+            self.left_butt = Butt(left_butt_width, left_butt_height, left_butt_offset)
+            self.right_butt = Butt(right_butt_width, right_butt_height, right_butt_offset)

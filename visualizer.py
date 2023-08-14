@@ -9,6 +9,7 @@ SIZE = 1920
 ORIGIN_Y = SIZE / 2
 ORIGIN_X = SIZE / 5
 
+FRACTION = 16
 
 
 
@@ -20,28 +21,43 @@ class Stroke:
 
 
 def visualize():
+    marimba_blueprint = marimba.Marimba(
+        74, 
+        36, 
+        3, 
+        18, 
+        14, 
+        3,
+        7, 
+    )
+    print(marimba_blueprint.midbeam_width)
     left_butt = marimba.Butt(4*16, 32*16, 16*16)
     right_butt = marimba.Butt(4*16, 16*16, 8*16)
     dwg = svgwrite.Drawing('test.svg', size=(SIZE, SIZE), profile='tiny')
 
     draw_axes(dwg)
-    draw_rectangle(dwg, (0, -2*16), (74*16, 4*16))
+    # draw_rectangle(dwg, (0, -2*16), (74*16, 4*16))
 
     # draw_rectangle(dwg, (0, 0), (16*12, 32*12))
-    draw_butt(dwg, left_butt, -4*16)
-    draw_butt(dwg, right_butt, 74*16)
+    # draw_butt(dwg, left_butt, -4*16)
+    # draw_butt(dwg, right_butt, 74*16)
+
+    draw_marimba(dwg, marimba_blueprint)
     dwg.save()
 
 
 def draw_marimba(drawing, marimba): 
-    return
+    print(marimba.midbeam_width)
+    draw_butt(drawing, marimba.left_butt, -marimba.left_butt.width) 
+    draw_butt(drawing, marimba.right_butt, marimba.midbeam_width)
 
 
 
 def draw_butt(drawing, butt, x_offset): 
-    sw_corner = (x_offset, -butt.y_offset)
-
-    draw_rectangle(drawing, sw_corner, (butt.width, butt.height))
+    print(x_offset)
+    sw_corner = scale_dimensions((x_offset, -butt.y_offset))
+    print(sw_corner)
+    draw_rectangle(drawing, sw_corner, scale_dimensions((butt.width, butt.height)))
     return
 
 
@@ -50,6 +66,7 @@ def draw_butt(drawing, butt, x_offset):
 # not the screen ones. 
 def draw_rectangle(drawing, sw_corner, dimensions, stroke=Stroke(svgwrite.rgb(0, 0, 0, 'RGB'), 5, 1)): 
 
+    print(sw_corner)
     nc = normalize_coordinate(sw_corner)
     print(nc)
 
@@ -111,3 +128,6 @@ def normalize_coordinate(coords):
 
 def color(r, g, b): 
     return svgwrite.rgb(r, g, b, 'RGB')
+
+def scale_dimensions(x): 
+    return (x[0]*FRACTION, x[1]*FRACTION)
