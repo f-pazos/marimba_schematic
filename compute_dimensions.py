@@ -1,7 +1,7 @@
 import key_data
 import calculator
 
-L_POS = 2.0
+L_POS = 1.75
 R_POS = 67.25
 
 def compute_dimensions():
@@ -23,7 +23,7 @@ def compute_dimensions():
     print("number of naturals: ", num_nats)
 
     # The gap is the between each bar. 
-    gap_per_bar = total_space / num_nats
+    gap_per_bar = total_space / (num_nats - 1)
     print("gap per bar:", gap_per_bar)
 
     # ---- 
@@ -38,16 +38,15 @@ def compute_dimensions():
     # non-constant gaps. I don't actually think we want to do that; although 
     # I'm honestly not positive about that. 
 
-    coord = L_POS
+    curr_x = L_POS
     i = 0
-    supports = [(0, "init", coord)]
+    # supports = [(0, "init", coord)]
+    supports = []
 
     for key in natural_keys:
-        coord += gap_per_bar
-        coord += key.dimension.width
+        supports.append([i, key.name, curr_x, curr_x + key.dimension.width])
+        curr_x += gap_per_bar + key.dimension.width
         i += 1
 
-        supports.append((i, key.name, coord))
-
     for support in supports: 
-        print(support[0], support[1], "{:.3f}".format(support[2]), "",calculator.convert_to_imperial(support[2], 32), sep="\t")
+        print('index: %s, bar: %s, left_x: %s, right_x: %s' % (support[0], support[1], calculator.convert_to_imperial(support[2]), calculator.convert_to_imperial(support[3])))
