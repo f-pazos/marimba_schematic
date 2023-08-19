@@ -5,16 +5,17 @@ L_POS = 2.0
 R_POS = 67.25
 
 def compute_dimensions():
-    keys = key_data.read_keys("key_data_new.csv")
+    # keys = key_data.read_keys("key_data_new.csv")
 
+    natural_keys = key_data.read_keys("jeezus_naturals.csv").naturals
     post_to_post = R_POS - L_POS
-    nat_width = calculator.width_all_bars(keys.naturals)
+    nat_width = calculator.width_all_bars(natural_keys)
 
     # The space in which the keys lie; from the left of the bottom A2 to the 
     # right of the C7.
     total_space = post_to_post - nat_width
 
-    num_nats = len(keys.naturals)
+    num_nats = len(natural_keys)
 
     print("Space:", post_to_post)
     print("bars sum: ", nat_width)
@@ -41,7 +42,7 @@ def compute_dimensions():
     i = 0
     supports = [(0, "init", coord)]
 
-    for key in keys.naturals:
+    for key in natural_keys:
         coord += gap_per_bar
         coord += key.dimension.width
         i += 1

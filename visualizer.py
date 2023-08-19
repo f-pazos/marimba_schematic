@@ -1,5 +1,6 @@
 import svgwrite
 import marimba
+import key_data
 
 
 
@@ -11,7 +12,7 @@ ORIGIN_X = SIZE / 5
 
 FRACTION = 16
 
-
+MARIMBA_WIDTH = 69
 
 class Stroke:
     def __init__(self, color, stroke_width, opacity):
@@ -21,18 +22,25 @@ class Stroke:
 
 
 def visualize():
-    marimba_blueprint = marimba.Marimba(
-        74, 
-        36, 
-        3, 
-        18, 
-        14, 
-        3,
-        7, 
-    )
-    print(marimba_blueprint.midbeam_width)
+
     left_butt = marimba.Butt(4*16, 32*16, 16*16)
     right_butt = marimba.Butt(4*16, 16*16, 8*16)
+
+    keys = key_data.read_keys("jeezus_naturals.csv")
+
+    mrm = marimba.MarimbaSchematic(
+        MARIMBA_WIDTH, 
+        marimba.Butt(3, 36, 18), 
+        marimba.Butt(3, 14, 7), 
+        [
+            marimba.Beam(-2.125, -1.5625, 1), 
+            marimba.Beam(-15.2675, -5.375, 1), 
+            marimba.Beam(2.5625, 1.2625, 1), 
+            marimba.Beam(14.75, 4.375, 1), 
+        ],
+            keys.naturals, 
+            keys.accidentals
+    )
     dwg = svgwrite.Drawing('test.svg', size=(SIZE, SIZE), profile='tiny')
 
     draw_axes(dwg)
@@ -42,33 +50,95 @@ def visualize():
     # draw_butt(dwg, left_butt, -4*16)
     # draw_butt(dwg, right_butt, 74*16)
 
-    draw_marimba(dwg, marimba_blueprint)
+    draw_marimba(dwg, mrm)
     dwg.save()
 
 
 def draw_marimba(drawing, marimba): 
-    print(marimba.midbeam_width)
     draw_butt(drawing, marimba.left_butt, -marimba.left_butt.width) 
     draw_butt(drawing, marimba.right_butt, marimba.midbeam_width)
+
+    for beam in marimba.beams:
+        draw_beam(drawing, marimba, beam)
+
+    draw_naturals(drawing, marimba.naturals, marimba.beams[0], MARIMBA_WIDTH, 2, .2767)
+    draw_quadratic_beam(drawing, marimba, None, None, None, None)
+
+def get_beam_y(beam, width, x): 
+    dy = beam.right_offset - beam.left_offset
+    dx = width
+
+    return beam.left_offset + (dy/dx)*x
+
+
+def draw_naturals(drawing, keys, beam, marimba_width, l_gap, spacing): 
+    current_x = l_gap
+    for key in keys: 
+        y = get_beam_y(beam, marimba_width, current_x)
+        sw_corner = scale_dimensions((current_x, y - key.dimension.height + key.dimension.nw_offset))
+        dimensions = scale_dimensions((key.dimension.width, key.dimension.height))
+        draw_rectangle(drawing, sw_corner, dimensions, Stroke(svgwrite.rgb(0, 0, 0, 'RGB'), 1, 1))
+        draw_nodes(drawing, sw_corner, key.dimension)
+        current_x += spacing + key.dimension.width
+
+    return
+
+
+def draw_nodes(drawing, sw_corner, key_dimension): 
+    sw_node_offset = scale_dimensions((0, key_dimension.sw_offset))
+    sw_node_coords = (sw_corner[0] + sw_node_offset[0], sw_corner[1] + sw_node_offset[1])
+    mid_node_height = key_dimension.height - key_dimension.nw_offset - key_dimension.sw_offset
+    draw_rectangle(drawing, sw_node_coords, scale_dimensions((key_dimension.width, mid_node_height)), Stroke(svgwrite.rgb(255, 0, 0, 'RGB'), 2, 1))
+
+
+def draw_beam(drawing, marimba, beam):
+    draw_line(drawing, scale_dimensions((0, beam.left_offset)), scale_dimensions((marimba.midbeam_width, beam.right_offset)))
+
+
+# Draws a polyline that approximates a parabola such that the endpoints are the
+# the same as the beam, but includes the point (adjustment_x, adjustment_y).
+def draw_quadratic_beam(drawing, marimba, beam, adjustment_y, adjustment_x, samples): 
+    # y = 7x^2 * 3x + 2
+    # (0, 2), (1, 12), (2, 36)
+    coordinates = (2, 1, 12, 2, 36)
+    print(calc_a(*coordinates))
+    print(calc_b(*coordinates))
+    print(calc_c(*coordinates))
+
+
+def calc_a(a, c, d, e, f): 
+    return (f - calc_b(a, c, d, e, f)*e - a) / (e*e)
+
+def calc_b(a, c, d, e, f): 
+    # return (y2*y2 - (x2*(y3*y3-y1*y1))/x3 - y1*y1) / (x2*x2 - x3*x2)
+    return (d  - c*c*(f-a)/(e*e) - a) / (c - c*c/e)
+
+def calc_c(a, c, d, e, f): 
+    return a
 
 
 
 def draw_butt(drawing, butt, x_offset): 
-    print(x_offset)
     sw_corner = scale_dimensions((x_offset, -butt.y_offset))
-    print(sw_corner)
     draw_rectangle(drawing, sw_corner, scale_dimensions((butt.width, butt.height)))
     return
 
-
+# def draw_line(drawing, start, end, stroke=Stroke(svgwrite.rgb(0, 0, 0, 'RGB'), 5, 1)): 
+#     drawing.add(
+#         drawing.line(
+#             normalize_coordinate(scale_dimensions(start)), 
+#             normalize_coordinate(scale_dimensions(end)), 
+#             stroke = stroke.color, 
+#             stroke_width = stroke.stroke_width, 
+#             opacity = stroke.opacity
+#         )
+#     )
 
 # Draws a rectangle. The given coordinates are abstract coordinates, 
 # not the screen ones. 
 def draw_rectangle(drawing, sw_corner, dimensions, stroke=Stroke(svgwrite.rgb(0, 0, 0, 'RGB'), 5, 1)): 
 
-    print(sw_corner)
     nc = normalize_coordinate(sw_corner)
-    print(nc)
 
     drawing.add(
         drawing.rect(
