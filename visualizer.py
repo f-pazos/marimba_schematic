@@ -27,11 +27,7 @@ DEFAULT_STROKE = Stroke(svgwrite.rgb(0, 0, 0, 'RGB'), 5, 1)
 
 def visualize():
 
-    left_butt = marimba.Butt(4*16, 32*16, 16*16)
-    right_butt = marimba.Butt(4*16, 16*16, 8*16)
-
     keys = key_data.read_keys("jeezus_naturals.csv")
-
 
     mrm = marimba.MarimbaSchematic(
         MARIMBA_WIDTH, 
@@ -46,6 +42,9 @@ def visualize():
             keys.naturals, 
             keys.accidentals
     )
+    x_to_keys = get_natural_x_to_key(mrm, LEFT_POST_GAP, BAR_GAP)
+    best_adjustment = compute_best_dimensions(mrm, mrm.beams[0], mrm.beams[1], x_to_keys, -3, 3, 1000)
+
 
     dwg = svgwrite.Drawing('test.svg', size=(SIZE, SIZE), profile='tiny')
 
@@ -59,87 +58,84 @@ def visualize():
     dwg.save()
 
 
+def get_natural_x_to_key(marimba, first_post, key_gap ): 
+    x_to_key = {}
+    curr_x = first_post
+    for key in marimba.naturals: 
+        x_to_key[curr_x] = key
+        curr_x += key.dimension.width + key_gap
+    return x_to_key
+        
 # Computes all possible adjustments and right post offsets within a the range 
 # (search_start, search_end) with the given number of samples, and picks with 
 # the lowest error. Error is computed as the sum of the squared errors of each 
 # bar node. The return is the distance between the adjusted bar and the lower 
 # bar.
-def compute_best_dimensions(marimba, top_beam, lower_beam, keys, gap, search_start, search_end, samples):
-    left_point = (0, lower_beam.left_offset)
-    right_point = (marimba.midbeam_width, lower_beam.right_offset)
+def compute_best_dimensions(
+        marimba, 
+        b_beam, 
+        a_beam, 
+        x_to_keys, 
+        search_start, 
+        search_end, 
+        samples):
+    
+    # let A be the beam that keys are anchored to, and let B be the other. 
 
-    best_error = 1000000000
+    w = marimba.midbeam_width 
 
-    right_offset_start = 0
-    right_offset_end = -10
+    a1 = (0, a_beam.left_offset)
+    a2 = (w, a_beam.right_offset)
+
+    a3_y_linear = (a_beam.right_offset - a_beam.left_offset)/2 + a_beam.left_offset
+
+    b1 = (0, b_beam.left_offset)
+    b2 = (w, b_beam.right_offset)
+    b3_y_linear = (b_beam.right_offset-b_beam.left_offset)/2 + b_beam.left_offset
+
+    # y_b = y_a + linear_delta
+    delta_y_linear = b3_y_linear - a3_y_linear 
+
+    best_error = 1000000000000000000
+    best_adjustment = search_start
 
     for i in range(samples): 
-        if i % 10 == 0: 
-            print(i)
-            
-        # right_offset = 10 * i / samples
-        right_offset = right_offset_start + (i / (samples-1)) * (right_offset_end - right_offset_start)
-        lower_beam.right_offset = right_offset
-        right_point = (marimba.midbeam_width, right_offset)
-        for j in range(samples): 
-            adjustment = search_start + (search_end - search_start) * (j / (samples-1))
-            width = marimba.midbeam_width
+        
+        adjustment = search_start + (search_end - search_start) * i / (samples-1)
+        a3_y_actual = a3_y_linear + adjustment/2
+        b3_y_actual = b3_y_linear - adjustment/2
 
-            lower_beam_mid_y = get_beam_y(lower_beam, width, width / 2)
+        a_parabola = Parabola.construct(a1, a2, (w/2, a3_y_actual))
+        b_parabola = Parabola.construct(b1, b2, (w/2, b3_y_actual))
 
-            top_beam_mid_y = get_beam_y(top_beam, width, width / 2)
+        error = compute_error(a_parabola, b_parabola, x_to_keys)
 
-            default_distance = abs(lower_beam_mid_y) - abs(top_beam_mid_y)
-            proposed_distance = default_distance + adjustment
+        print("%s: adjustment: %s, error: %s" % (i, adjustment, error))
+        if error < best_error: 
+            best_error = error
+            best_adjustment = adjustment
 
+    return best_adjustment
+    
 
-            third_point = (width / 2, top_beam_mid_y - proposed_distance)
-
-            coordinates = (left_point[1], third_point[0], third_point[1], right_point[0], right_point[1])
-            a = calc_a(*coordinates)
-            b = calc_b(*coordinates)
-            c = calc_c(*coordinates)
-
-            error = compute_error(a, b, c, marimba, top_beam, keys, gap)
-
-            if error < best_error: 
-                best_error = error 
-                best_candidates = (right_offset, default_distance + adjustment)
-
-    return best_candidates
-
-def compute_error(a, b, c, marimba, top_beam, keys, gap): 
-
-    curr_x = 0
+def compute_error(a_parabola, b_parabola, key_locations): 
     error = 0 
-    error_exp = 1.5
-    for key in keys: 
-        key = key.dimension
-        top_beam_y = get_beam_y(top_beam, marimba.midbeam_width, curr_x)
-        lower_beam_y = quadratic_of(curr_x, a, b, c)
 
-        ideal_gap = key.height - key.nw_offset - key.sw_offset
-        actual_gap = abs(lower_beam_y) - abs(top_beam_y)
-        d_error = abs(ideal_gap - actual_gap)**error_exp
-        error += d_error
+    for x in key_locations: 
+        key = key_locations[x].dimension
 
+        linear_dist = key.height - key.nw_offset - key.sw_offset
+        quad_dist = b_parabola.y(x) - a_parabola.y(x)
 
-        curr_x += key.width
+        error += abs(linear_dist - quad_dist)**2
 
-        top_beam_y = get_beam_y(top_beam, marimba.midbeam_width, curr_x)
-        lower_beam_y = quadratic_of(curr_x, a, b, c)
+        linear_dist = key.height - key.ne_offset - key.se_offset
+        quad_dist = b_parabola.y(x+key.width) - b_parabola.y(x+key.width)
 
-        ideal_gap = key.height - key.nw_offset - key.sw_offset
-        actual_gap = abs(lower_beam_y) - abs(top_beam_y)
-
-        error += abs(ideal_gap - actual_gap)**error_exp
-
-        curr_x += gap
+        error += abs(linear_dist - quad_dist)**2
 
 
     return error
-
-
 
 
 
@@ -191,10 +187,11 @@ def get_beam_y(beam, width, x):
     return beam.left_offset + (dy/dx)*x
 
 
-def draw_naturals(drawing, keys, beam, marimba_width, l_gap, spacing): 
+def draw_naturals(drawing, keys, beam_parabola, marimba_width, l_gap, spacing): 
     current_x = l_gap
     for key in keys: 
-        y = get_beam_y(beam, marimba_width, current_x)
+        y = (beam_parabola.y(current_x) + beam_parabola.y(current_x+key.dimension.width))/2
+        # get_beam_y(beam, marimba_width, current_x)
 
         sw_corner = (current_x, y - key.dimension.height + key.dimension.nw_offset)
         dimensions = (key.dimension.width, key.dimension.height)
@@ -273,6 +270,43 @@ def draw_quadratic_beam(drawing, marimba, beam, adjustment_y, adjustment_x, samp
 
         )
     )
+
+
+class Parabola:
+    def __init__(self, a, b, c): 
+        self.a, self.b, self.c = a, b, c 
+
+    def __str__(self): 
+        return "(%s, %s, %s)" % (self.a, self.b, self.c)
+
+    def y(self, x): 
+        return self.a*x*x + self.b*x + self.c
+
+    # constructs a parabola. note, p1 must have x coordinate of 0.
+    def construct(p1, p2, p3): 
+        x1, y1, x2, y2, x3, y3 = p1[0], p1[1], p2[0], p2[1], p3[0], p3[1]
+
+        a = ((x2-x3)*(y1-y3) - (x1-x3)*(y2-y3)) / ( (x1**2 - x3**2)*(x2-x3) - (x2**2 - x3**2)*(x1-x3))
+
+        b = ((y2-y3) - a*(x2**2-x3**2)) / (x2-x3)
+
+        c = y1 - a*(x1**2) - b*x1
+
+        return Parabola(a, b, c)
+    
+class Line: 
+    def __init__(self, m, b): 
+        self.m, self.b = m, b
+
+    def f(self, x):
+        return self.m*x + self.b
+    
+    def construct(self, p1, p2):
+        m = (p2[1]-p2[0]) / (p1[1]-p2[0])
+        b = p1[1] - m*p1[0]
+
+        return Line(m, b)
+
 
 def quadratic_of(x, a, b, c): 
     return a*x*x + b*x + c
