@@ -64,8 +64,7 @@ class Keys:
 def read_keys(filename):
     rows = read_csv(filename)[1:]
 
-    naturals = []
-    accidentals = []
+    keys = []
 
     for row in rows:
         note = row[0].strip()
@@ -81,9 +80,9 @@ def read_keys(filename):
 
         key = Key(index, note, "NATURALS", dimension)
 
-        naturals.append(key)
+        keys.append(key)
 
-    return Keys(naturals, None)
+    return keys 
 
 # Returns raw CSV file data.
 def read_csv(filename):
